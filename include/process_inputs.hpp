@@ -6,11 +6,12 @@
 #define VECTORWIDTH 16
 #endif
 
-inline void fpdbacksolve(float* __restrict X, float* __restrict BPP, std::size_t n, std::size_t N){
 
-    float x1 = BPP[n];
-    float x2 = BPP[n + N];
-    float x3 = BPP[n + 2*N];
+inline void fpdforwardsolve(float* __restrict X, float* __restrict BPP, int n, int N){
+
+    float  x1 = BPP[n      ];
+    float  x2 = BPP[n +   N];
+    float  x3 = BPP[n + 2*N];
     float S11 = BPP[n + 4*N];
     float S12 = BPP[n + 5*N];
     float S22 = BPP[n + 6*N];
@@ -18,30 +19,28 @@ inline void fpdbacksolve(float* __restrict X, float* __restrict BPP, std::size_t
     float S23 = BPP[n + 8*N];
     float S33 = BPP[n + 9*N];
 
-    float U33 = sqrtf(S33);
+    float R11 = 1 / sqrtf(S11);
+    float R11x1 = R11 * x1;
+    float L21 = R11 * S12;
+    float L31 = R11 * S13;
+    float R22 = 1 / sqrtf(S22 - L21*L21);
+    float L32 = R22 * (S23 - L21*L31);
+    float R33 = 1 / sqrtf(S33 - L31*L31 - L32*L32);
 
-    float Ui33 = 1 / U33;
-    float U13 = S13 * Ui33;
-    float U23 = S23 * Ui33;
-    float U22 = sqrtf(S22 - U23*U23);
-    float Ui22 = 1 / U22;
-    float U12 = (S12 - U13*U23) * Ui22;
-    float U11 = sqrtf(S11 - U12*U12 - U13*U13);
+    float nR21x1 = R22 * L21*R11x1;
+    float R31x1 = R33 * ( L32*nR21x1 - L31*R11x1 );
+    float nR32 = R33 * L32 * R22;
 
-    float Ui11 = 1 / U11;
-    float Ui12 = - U12 * Ui11 * Ui22;
 
-    float Ui33x3 = Ui33 * x3;
-
-    X[n      ] = Ui11*x1 + Ui12*x2 - (U13 * Ui11 + U23 * Ui12) * Ui33x3;
-    X[n +   N] = Ui22*x2 - U23 * Ui22 * Ui33x3;
-    X[n + 2*N] = Ui33x3;
+    X[n      ] = R11x1;
+    X[n +   N] = R22*x2 - nR21x1;
+    X[n + 2*N] = R31x1 - nR32*x2 + R33*x3;
 
 }
 
 void processBPP(float* __restrict X, float* __restrict BPP, std::size_t N){
     for (std::size_t n = 0; n < N; n++){
-        fpdbacksolve(X, BPP, n, N);
+        fpdforwardsolve(X, BPP, n, N);
     }
 }
 
@@ -102,7 +101,7 @@ void processBPP(float* __restrict X, float* __restrict BPP, std::size_t N){
 //             uint_ptr[0] = two_f32_ones;
 //             uint_ptr += 4;
 //         }
-        
+
 //         rank1covs_ptr += 8*VECTORWIDTH;
 
 //         // __m512 xx_xy_0 = _mm512_permutex2var_ps(xx, select_mix2_0, xy);
