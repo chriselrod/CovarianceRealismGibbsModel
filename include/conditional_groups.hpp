@@ -109,7 +109,7 @@ void update_groups(Groups<NUMGROUPS, MAXN>& groups, float* __restrict p, float* 
 
     //     }
 
-        
+
     // }
 
     std::size_t N = groups.size();
@@ -118,6 +118,8 @@ void update_groups(Groups<NUMGROUPS, MAXN>& groups, float* __restrict p, float* 
     std::size_t remainder_lb = N - iter_rem ; // ((N / VECTORWIDTH) * VECTORWIDTH);
     // std::size_t mask_off = VECTORWIDTH - iter_rem;
     MASK mask = MASK( ((uint16_t)((1 << iter_rem) - 1)) ); // << mask_off );
+
+// #ifdef __clang__
 
     // _mm512_set1_ps
     for (std::size_t g = 0; g < NUMGROUPS; g++){
@@ -197,13 +199,58 @@ void update_groups(Groups<NUMGROUPS, MAXN>& groups, float* __restrict p, float* 
 
     }
 
+
+// #elseif
+//
+//     std::size_t prob_length = NUMGROUPS * N;
+//     float exponent[NUMGROUPS];
+//     float base[NUMGROUPS];
+//     for (std::size_t g = 0; g < NUMGROUPS; g++){
+//         float Li11 = revcholwisharts[g           ];
+//         float Li21 = revcholwisharts[g +   stride];
+//         float Li31 = revcholwisharts[g + 2*stride];
+//         float Li22 = revcholwisharts[g + 3*stride];
+//         float Li32 = revcholwisharts[g + 4*stride];
+//         float Li33 = revcholwisharts[g + 5*stride];
+//         float nu   = revcholwisharts[g + 6*stride];
+//         exponent[g] = -1.5f-0.5f*nu;
+//         base[g] = logf(group_p[g]) + logf(Li11) + logf(Li22) + logf(Li33) +
+//                         lgammaf(-exponent[g]) - lgammaf(0.5f*nu) - 1.5f*logf(nu);
+//
+//         for ( std::size_t i = 0; i < N; i++){
+//             float x1 = x[sub2ind(N, i, 0)];
+//             float x2 = x[sub2ind(N, i, 1)];
+//             float x3 = x[sub2ind(N, i, 2)];
+//
+//             float vlx1 = Li11 * x1;
+//             float vlx2 = Li21 * x1 + Li22 * x2;
+//             float vlx3 = Li31 * x1 + Li32 * x2 + Li33 * x3;
+//
+//             p[sub2ind(N, i, g)] = vlx3 * vlx3 + vlx2 * vlx2 + vlx1 * vlx1 + 1.0f;
+//             // p[sub2ind(N, i, g)] = logf(vlx3 * vlx3 + vlx2 * vlx2 + vlx1 * vlx1 + 1.0f);
+//
+//         }
+//     }
+//     for (std::size_t i = 0; i < prob_length; i++){
+//         p[i] = logf(p[i]);
+//     }
+//     for (std::size_t g = 0; g < NUMGROUPS; g++){
+//         for ( std::size_t i = 0; i < N; i++){
+//             p[sub2ind(N, i, g)] = p[sub2ind(N, i, g)] * exponent[g] + base[g];
+//         }
+//     }
+//     for (std::size_t i = 0; i < prob_length; i++){
+//         p[i] = expf(p[i]);
+//     }
+// #endif
+
     int8_t* group_ptr = reinterpret_cast<int8_t*>(&(groups.groups));
-    
+
     GVECTOR vgs[NUMGROUPS];
     for (int8_t g = 0; g < (int8_t) NUMGROUPS; g++){
         vgs[g] = CREATE_GROUP_VECTOR(NUMGROUPS - 1 - g);
     }
-    
+
     for (std::size_t i = 0; i < N - VECTORWIDTH; i += VECTORWIDTH){
 
         __m512_2 unifs = srandunif_2vectors();
@@ -290,7 +337,7 @@ void initialize_groups(Groups<NUMGROUPS, MAXN>& groups, float* base_p){
     for (int8_t g = 0; g < (int8_t) NUMGROUPS; g++){
         vgs[g] = CREATE_GROUP_VECTOR(NUMGROUPS - 1 - g);
     }
-    
+
     // float ps[NUMGROUPS-1];
     float last_p = base_p[0];
     VECTOR vps[NUMGROUPS-1];
@@ -321,7 +368,7 @@ void initialize_groups(Groups<NUMGROUPS, MAXN>& groups, float* base_p){
         GROUPSTORE(group_ptr + i, vg);
 
     }
-    
+
 
     size_t NpW = N + VECTORWIDTH - 1;
     for (std::size_t i = NpW - (NpW & (VECTORWIDTH - 1)); i < N; i += VECTORWIDTH){
@@ -341,4 +388,3 @@ void initialize_groups(Groups<NUMGROUPS, MAXN>& groups, float* base_p){
     // }
     // std::cout << std::endl;
 }
-
