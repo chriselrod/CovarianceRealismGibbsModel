@@ -1,10 +1,12 @@
 #include <math.h>
 #include <immintrin.h>
+// #include "xsimd/xsimd.hpp"
 #include "class_definitions.hpp"
 
-#ifndef VECTORWIDTH
-#define VECTORWIDTH 16
-#endif
+// #ifndef VECTORWIDTHDEFINED
+// constexpr std::size_t VECTORWIDTH = xsimd::simd_type<float>::size;
+// #define VECTORWIDTHDEFINED
+// #endif
 
 
 inline void fpdforwardsolve(float* __restrict X, float* __restrict BPP, int n, int N){

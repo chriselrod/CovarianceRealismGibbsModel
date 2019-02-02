@@ -38,7 +38,7 @@ void run_sample(
     // p is working probs
     for (std::size_t i = 0; i < warmup; i++){
         update_probabilities(probs, iw);
-        update_groups(groups, reinterpret_cast<float*>(individual_probs), probs, revcholwisharts, X, iter);
+        update_groups(groups, individual_probs, probs, revcholwisharts, X, iter);
         calc_wisharts(revcholwisharts, cholinvwisharts, iw, rank1covs, groups, iter);
     }
     update_probabilities(probs, iw);
@@ -73,21 +73,21 @@ void processBPP_e(float* X, float* BPP, std::size_t N){
 void rank1covs_e(InverseWishart* rank1covs, float* X, std::size_t N){
     rank1covariances(rank1covs, X, N);
 }
-void initialize_groups_e6(int8_t* groups_ptr, float* base_p, std::size_t N){
+void initialize_groups_e6(u_int32_t* groups_ptr, float* base_p, std::size_t N){
     groups_6.resize(N);
     initialize_groups(groups_6, base_p);
     for (std::size_t n = 0; n < N; n++){
         groups_ptr[n] = groups_6[n];
     }
 }
-void calc_wisharts_e6(float* revcholwisharts, float* cholinvwisharts, float* iw_ptr, InverseWishart* rank1covs, int8_t* groups_ptr, std::size_t iter, std::size_t N){
+void calc_wisharts_e6(float* revcholwisharts, float* cholinvwisharts, float* iw_ptr, InverseWishart* rank1covs, u_int32_t* groups_ptr, std::size_t iter, std::size_t N){
     groups_6.resize(N);
     for (std::size_t n = 0; n < N; n++){
         groups_6[n] = groups_ptr[n];
     }
     calc_wisharts(revcholwisharts, cholinvwisharts, inverse_wisharts_6, rank1covs, groups_6, iter);
     float* iw6_ptr = reinterpret_cast<float*>(&(inverse_wisharts_6.inverse_wisharts));
-    for (std::size_t g = 0; g < 36; g += 6){
+    for (std::size_t g = 0; g < 48; g += 8){
         _mm256_storeu_ps(iw_ptr+ g, _mm256_loadu_ps(iw6_ptr + g));
     }
 }
@@ -96,12 +96,12 @@ void update_probabilities_e6(float* probs, float* iw_ptr){
     //     inverse_wisharts_6[g] = iw_ptr[g];
     // }
     float* iw6_ptr = reinterpret_cast<float*>(&(inverse_wisharts_6.inverse_wisharts));
-    for (std::size_t g = 0; g < 36; g += 6){
+    for (std::size_t g = 0; g < 48; g += 8){
         _mm256_storeu_ps(iw6_ptr+ g, _mm256_loadu_ps(iw_ptr + g));
     }
     update_probabilities(probs, inverse_wisharts_6);
 }
-void update_groups_e6(int8_t* groups_ptr, float* probs, float* individual_probs, float* revcholwisharts, float* X, std::size_t iter, std::size_t N){
+void update_groups_e6(u_int32_t* groups_ptr, float* probs, float* individual_probs, float* revcholwisharts, float* X, std::size_t iter, std::size_t N){
     groups_6.resize(N);
     update_groups(groups_6, individual_probs, probs, revcholwisharts, X, iter);
     for (std::size_t n = 0; n < N; n++){
@@ -109,8 +109,11 @@ void update_groups_e6(int8_t* groups_ptr, float* probs, float* individual_probs,
     }
 }
 
-__m512 vsrandunif(){
+vfloat vsrandunif(){
     return srandunif_vector();
+}
+vfloat_2 vsrandunif2(){
+    return srandunif_2vectors();
 }
 
 }
@@ -118,5 +121,3 @@ __m512 vsrandunif(){
 // void parallel_sample_6groups(){
 
 // }
-
-

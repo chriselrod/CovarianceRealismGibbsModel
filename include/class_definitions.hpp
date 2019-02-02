@@ -3,6 +3,7 @@
 
 // #include <iostream>
 #include <immintrin.h>
+// #include "xsimd/xsimd.hpp"
 #include <math.h>
 
 
@@ -10,11 +11,11 @@
 template <size_t NUMGROUPS, size_t MAXN>
 class Groups{
 public:
-    int8_t groups[MAXN];
+    u_int32_t groups[MAXN];
     size_t N;
-    
+
     template <class T>
-    inline int8_t& operator[] (T i){
+    inline u_int32_t& operator[] (T i){
         return groups[i];
     }
     std::size_t size(){
@@ -27,7 +28,7 @@ public:
 
 class InverseWishart{
     __m256 data;
-public: 
+public:
     InverseWishart(){
         data = _mm256_set1_ps(0.0f);
     };
@@ -108,7 +109,7 @@ public:
             cholinvwisharts[g + 5*stride] = L33;
             cholinvwisharts[g + 6*stride] = iw[6];
             cholinvwisharts[g + 7*stride] = iw[7];
-            
+
             revcholwisharts[g           ] = R11;
             revcholwisharts[g +   stride] = R21;
             revcholwisharts[g + 2*stride] = R31;
